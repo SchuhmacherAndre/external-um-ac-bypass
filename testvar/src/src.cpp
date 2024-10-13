@@ -1,10 +1,42 @@
 #include <iostream>
 #include <thread>
 #include <atomic>
+#include <Windows.h>
 #include <chrono>
+
+typedef NTSTATUS(NTAPI* NtQuerySystemInformation_t)(
+    ULONG SystemInformationClass,
+    PVOID SystemInformation,
+    ULONG SystemInformationLength,
+    PULONG ReturnLength
+    );
 
 int main()
 {
+
+    // Load ntdll.dll manually
+    HMODULE hNtdll = LoadLibraryA("ntdll.dll");
+
+    if (!hNtdll) {
+        std::cerr << "Failed to load ntdll.dll." << std::endl;
+        return 1;
+    }
+
+    // Get the address of NtQuerySystemInformation
+    NtQuerySystemInformation_t NtQuerySystemInformation =
+        (NtQuerySystemInformation_t)GetProcAddress(hNtdll, "NtQuerySystemInformation");
+
+    if (!NtQuerySystemInformation) {
+        std::cerr << "Failed to get address of NtQuerySystemInformation." << std::endl;
+        return 1;
+    }
+
+    ULONG len = 0;
+    NtQuerySystemInformation(0, nullptr, 0, &len);  // Query system information
+
+    std::cout << "Called NtQuerySystemInformation." << std::endl;
+
+
     // gen random number 0-255
     std::srand(std::time(0));
     std::atomic<int> randomNum(std::rand() % 256);
@@ -34,6 +66,8 @@ int main()
         
     }
 
+    
     monitorThread.join();
+    FreeLibrary(hNtdll);
     return 0;
 }
